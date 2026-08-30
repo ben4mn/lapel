@@ -1,0 +1,38 @@
+name: Lapel
+options:
+  bundleIdPrefix: com.4mn
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  LapelKit:
+    path: ..
+
+targets:
+  Lapel:
+    type: application
+    platform: macOS
+    sources:
+      - path: Lapel
+    dependencies:
+      - package: LapelKit
+        product: LapelKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.4mn.lapel
+        PRODUCT_NAME: Lapel
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        INFOPLIST_FILE: Lapel/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Lapel/Lapel.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        # Ad-hoc signing so the app builds and runs on a clean checkout with no
+        # Apple Developer account. Release builds override this.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        COMBINE_HIDPI_IMAGES: YES
