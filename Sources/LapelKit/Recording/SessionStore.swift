@@ -130,6 +130,29 @@ public struct SessionStore: Sendable {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
+    // MARK: - Transcripts
+
+    public static let transcriptFileName = "transcript.json"
+
+    /// Writes the transcript beside the audio and records its name in the metadata,
+    /// which the caller then persists.
+    public func write(_ transcript: Transcript, to session: SessionHandle, updating metadata: inout SessionMetadata) throws {
+        let url = session.directory.appendingPathComponent(Self.transcriptFileName)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(transcript).write(to: url, options: .atomic)
+        metadata.transcriptFileName = Self.transcriptFileName
+    }
+
+    /// Nil rather than throwing for both of the ordinary cases: a session that was
+    /// never transcribed, and metadata naming a file that has since been removed.
+    public func readTranscript(for session: StoredSession) -> Transcript? {
+        guard let name = session.metadata.transcriptFileName else { return nil }
+        let url = session.directory.appendingPathComponent(name)
+        guard let data = FileManager.default.contents(atPath: url.path) else { return nil }
+        return try? JSONDecoder().decode(Transcript.self, from: data)
+    }
+
     /// Removes a session directory, refusing anything that is not a direct child of
     /// the store so a bad URL cannot take out an unrelated folder.
     public func delete(_ directory: URL) throws {

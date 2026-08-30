@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import LapelKit
 
-private func makeTemporaryRoot() throws -> URL {
+func makeTemporaryRoot() throws -> URL {
     let root = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("LapelTests-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -216,5 +216,53 @@ struct SessionStoreTests {
 
         #expect(throws: SessionStoreError.self) { try store.delete(outsider) }
         #expect(FileManager.default.fileExists(atPath: outsider.path))
+    }
+}
+
+@Suite("SessionStore transcripts")
+struct SessionStoreTranscriptTests {
+
+    private let transcript = Transcript(turns: [
+        TranscriptTurn(speaker: "Ben", channelIndex: 0, start: 0, end: 2, text: "morning"),
+        TranscriptTurn(speaker: "Dana", channelIndex: 1, start: 3, end: 5, text: "morning to you"),
+    ])
+
+    @Test("a transcript is written beside the audio and read back intact")
+    func roundTrip() throws {
+        let store = SessionStore(root: try makeTemporaryRoot())
+        let handle = try store.createSession(title: "talk", at: Date(timeIntervalSince1970: 1_756_000_000))
+        var metadata = SessionMetadata(
+            id: handle.id, title: "talk", createdAt: Date(timeIntervalSince1970: 1_756_000_000),
+            deviceName: "DJI", inputChannelCount: 2, sampleRate: 48_000, format: .aac)
+
+        try store.write(transcript, to: handle, updating: &metadata)
+        try store.write(metadata, to: handle)
+
+        #expect(metadata.transcriptFileName == "transcript.json")
+        let stored = StoredSession(directory: handle.directory, metadata: metadata)
+        #expect(store.readTranscript(for: stored) == transcript)
+    }
+
+    @Test("a session that was never transcribed reads back as no transcript, not an error")
+    func absentTranscript() throws {
+        let store = SessionStore(root: try makeTemporaryRoot())
+        let handle = try store.createSession(title: "silent", at: Date())
+        let metadata = SessionMetadata(
+            id: handle.id, title: "silent", createdAt: Date(),
+            deviceName: "DJI", inputChannelCount: 2, sampleRate: 48_000, format: .aac)
+
+        #expect(store.readTranscript(for: StoredSession(directory: handle.directory, metadata: metadata)) == nil)
+    }
+
+    @Test("metadata naming a transcript file that is gone reads back as no transcript")
+    func danglingTranscriptReference() throws {
+        let store = SessionStore(root: try makeTemporaryRoot())
+        let handle = try store.createSession(title: "gone", at: Date())
+        var metadata = SessionMetadata(
+            id: handle.id, title: "gone", createdAt: Date(),
+            deviceName: "DJI", inputChannelCount: 2, sampleRate: 48_000, format: .aac)
+        metadata.transcriptFileName = "transcript.json"
+
+        #expect(store.readTranscript(for: StoredSession(directory: handle.directory, metadata: metadata)) == nil)
     }
 }
