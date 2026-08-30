@@ -8,12 +8,15 @@ struct SessionDetailView: View {
 
     @Environment(RecorderModel.self) private var recorder
     @State private var player = TrackPlayer()
+    @State private var preview = MixPreview()
     @State private var isExporting = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
+
+                CombinedSection(preview: preview)
 
                 VStack(spacing: 10) {
                     ForEach(session.metadata.tracks) { track in
@@ -30,7 +33,8 @@ struct SessionDetailView: View {
             .padding(22)
         }
         .navigationTitle(session.title)
-        .onDisappear { player.stop() }
+        .task(id: session.id) { await preview.load(session) }
+        .onDisappear { player.stop(); preview.discard() }
         .toolbar {
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([session.directory])
@@ -43,7 +47,11 @@ struct SessionDetailView: View {
             .help("Combine into one audio file and one transcript")
         }
         .sheet(isPresented: $isExporting) {
-            ExportSheet(session: session, transcript: recorder.transcript(for: session))
+            ExportSheet(
+                session: session,
+                transcript: recorder.transcript(for: session),
+                trim: preview.trim.isTrimmed ? preview.trim : nil
+            )
         }
     }
 
@@ -55,6 +63,70 @@ struct SessionDetailView: View {
                  + "\(session.metadata.deviceName) · \(session.metadata.format.displayName)")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// The mix of every speaker, with a waveform to trim against and playback of the
+/// selection, so what you hear before exporting is what the export contains.
+private struct CombinedSection: View {
+    @Bindable var preview: MixPreview
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Combined").font(.title3.weight(.semibold))
+                Spacer()
+                if preview.trim.isTrimmed {
+                    Text("\(Transcript.timecode(preview.trim.start)) – \(Transcript.timecode(preview.trim.end))"
+                         + "  ·  \(Transcript.timecode(preview.trim.selectedDuration)) selected")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Button("Reset") { preview.trim.reset() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
+            }
+
+            if preview.isLoading {
+                ProgressView().controlSize(.small)
+                    .frame(maxWidth: .infinity, minHeight: 96)
+                    .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 8))
+            } else if let message = preview.errorMessage {
+                Text(message)
+                    .font(.callout).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 96)
+                    .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 8))
+            } else if preview.hasAudio {
+                WaveformView(
+                    summary: preview.summary,
+                    trim: $preview.trim,
+                    playhead: preview.playhead,
+                    onScrub: { preview.seek(to: $0) }
+                )
+
+                HStack(spacing: 12) {
+                    Button { preview.toggle() } label: {
+                        Image(systemName: preview.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.title)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.space, modifiers: [])
+                    .help("Play the selection")
+
+                    Text(Transcript.timecode(preview.playhead))
+                        .font(.callout.monospacedDigit())
+                    Text("/").foregroundStyle(.tertiary)
+                    Text(Transcript.timecode(preview.duration))
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+                    Text("Drag the ends to trim · click to scrub")
+                        .font(.caption).foregroundStyle(.tertiary)
+                }
+            }
         }
     }
 }

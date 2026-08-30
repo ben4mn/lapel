@@ -21,6 +21,13 @@ struct ContentView: View {
         .onChange(of: recorder.isRecording) { _, isRecording in
             if isRecording { selection = nil }
         }
+        // Recordings can appear or vanish in Finder while the app is open.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            recorder.reloadSessions()
+            if let selection, !recorder.sessions.contains(where: { $0.id == selection }) {
+                self.selection = nil
+            }
+        }
     }
 }
 

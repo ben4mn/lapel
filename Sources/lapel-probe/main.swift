@@ -207,6 +207,15 @@ if let flag = CommandLine.arguments.firstIndex(of: "--transcribe-check"),
 }
 #endif
 
+if let flag = CommandLine.arguments.firstIndex(of: "--preview-check"),
+   CommandLine.arguments.count > flag + 2 {
+    PreviewCheck.run(
+        sessionDirectory: URL(fileURLWithPath: CommandLine.arguments[flag + 1]),
+        output: URL(fileURLWithPath: CommandLine.arguments[flag + 2])
+    )
+    exit(0)
+}
+
 // Held in a binding rather than called on a temporary: the timer and the device
 // monitor capture the probe weakly, and a temporary would be gone before either fires.
 let probe = Probe()

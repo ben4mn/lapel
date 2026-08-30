@@ -236,6 +236,15 @@ public final class RecorderModel {
         }
     }
 
+    /// Re-reads the library from disk.
+    ///
+    /// Worth calling whenever the app regains focus: recordings can be added or
+    /// removed in Finder while it is open, and a list that still shows a session
+    /// whose files are gone offers the user nothing but a confusing error.
+    public func reloadSessions() {
+        refreshSessions()
+    }
+
     private func refreshSessions() {
         sessions = (try? store.listSessions()) ?? []
     }

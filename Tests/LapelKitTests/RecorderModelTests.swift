@@ -281,3 +281,50 @@ struct RecorderModelTests {
         #expect(model.speakerNames == ["TX1", "TX2"])
     }
 }
+
+@MainActor
+@Suite("RecorderModel session library")
+struct RecorderModelLibraryTests {
+
+    @Test("reloading picks up sessions written by something other than this app")
+    func reloadSeesExternalChanges() throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("LapelReload-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let store = SessionStore(root: root)
+        let model = RecorderModel(store: store)
+
+        #expect(model.sessions.isEmpty)
+
+        // Written behind the model's back — the same thing that happens when a
+        // recording is added or removed in Finder while the app is open.
+        let handle = try store.createSession(title: "Elsewhere", at: Date())
+        try store.write(SessionMetadata(
+            id: handle.id, title: "Elsewhere", createdAt: Date(),
+            deviceName: "DJI", inputChannelCount: 2, sampleRate: 48_000, format: .aac), to: handle)
+
+        model.reloadSessions()
+        #expect(model.sessions.map(\.title) == ["Elsewhere"])
+    }
+
+    @Test("a session whose files have been removed drops out of the library on reload")
+    func reloadDropsDeletedSessions() throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("LapelReload-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let store = SessionStore(root: root)
+
+        let handle = try store.createSession(title: "Doomed", at: Date())
+        try store.write(SessionMetadata(
+            id: handle.id, title: "Doomed", createdAt: Date(),
+            deviceName: "DJI", inputChannelCount: 2, sampleRate: 48_000, format: .aac), to: handle)
+
+        let model = RecorderModel(store: store)
+        #expect(model.sessions.count == 1)
+
+        try FileManager.default.removeItem(at: handle.directory)
+        model.reloadSessions()
+
+        #expect(model.sessions.isEmpty)
+    }
+}

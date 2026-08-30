@@ -7,6 +7,8 @@ import SwiftUI
 struct ExportSheet: View {
     let session: StoredSession
     let transcript: Transcript?
+    /// Carried in from the preview so the export matches what was auditioned.
+    var trim: TrimSelection?
 
     @Environment(\.dismiss) private var dismiss
     @State private var options = ExportOptions()
@@ -31,7 +33,8 @@ struct ExportSheet: View {
                     .disabled(!options.includeAudio)
                 } footer: {
                     Text("All \(session.metadata.tracks.count) speaker tracks mixed to a single file. "
-                         + "The individual tracks are kept.")
+                         + "The individual tracks are kept."
+                         + (trim.map { " Trimmed to \(Transcript.timecode($0.selectedDuration))." } ?? ""))
                     .font(.caption).foregroundStyle(.secondary)
                 }
 
@@ -63,7 +66,10 @@ struct ExportSheet: View {
             footerBar
         }
         .frame(width: 460)
-        .onAppear { options.includeTranscript = hasTranscript }
+        .onAppear {
+            options.includeTranscript = hasTranscript
+            options.trim = trim
+        }
     }
 
     private var header: some View {
