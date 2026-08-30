@@ -99,15 +99,20 @@ private struct AdvisoryBanner: View {
     let message: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        // No Spacer and no fixedSize. A wrapping Text with fixedSize(vertical:)
+        // next to a Spacer inside this stack sends SwiftUI into a layout loop that
+        // blanks the entire window — responsive, no error, just nothing drawn.
+        // Width is claimed with an explicit frame instead.
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
             Text(message)
                 .font(.callout)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer()
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.orange.opacity(0.12))
     }
 }
