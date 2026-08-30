@@ -135,6 +135,7 @@ footer { padding: 40px 0 72px; border-top: 1px solid var(--border); color: var(-
     <div class="card"><h3>Records per speaker</h3><p>One file per person, named for whoever wore that mic. Channels that never carried a transmitter are discarded, not saved as silence.</p></div>
     <div class="card"><h3>Transcribes on device</h3><p>Each track transcribed separately, so attribution is settled before any model runs. Nothing leaves your Mac.</p></div>
     <div class="card"><h3>Warns you about Mono</h3><p>In M mode the receiver mixes both lapels before your Mac sees them. Lapel says so, and names the fix on the hardware.</p></div>
+    <div class="card"><h3>Trims before export</h3><p>Drag the ends of the combined waveform, scrub, and play exactly the stretch you selected. Non-destructive — the per-speaker files are never touched.</p></div>
     <div class="card"><h3>Exports a shareable pair</h3><p>Every speaker mixed to one audio file, and one attributed transcript — plain text, Markdown or SRT — alongside the per-speaker files, not instead of them.</p></div>
   </div>
 </section>
@@ -170,6 +171,10 @@ DJI MIC MINI — 2 of 2 microphones live
   <div class="note" style="margin-top:26px">
     <h3>The mixdown is a sum, not an average</h3>
     <p>Averaging is the textbook answer and it is wrong here. Two people taking turns is the normal case, so only one track is loud at any instant — dividing by the track count would halve the volume of a recording that never came close to clipping. The sum is taken at full weight, and a single gain applied across the whole mix only if its peak would exceed −1&nbsp;dBFS.</p>
+  </div>
+  <div class="note">
+    <h3>The transcript is re-timed with the audio</h3>
+    <p>Trim the mix and the transcript follows: turns outside the selection are dropped, and the rest are rebased so the two exported files still line up. A turn straddling a cut is clipped rather than dropped — someone mid-sentence at the boundary still said something inside the clip.</p>
   </div>
   <div class="note">
     <h3>Mixing discards the separation, so the transcript carries it</h3>

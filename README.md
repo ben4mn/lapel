@@ -31,6 +31,8 @@ perfect, deterministic, and free. Lapel just refuses to discard it.
   together and separation is impossible — with the fix, on the hardware, in words.
 - **Exports a shareable pair**: all speakers mixed into one audio file, and one
   combined transcript with every line attributed — as plain text, Markdown or SRT.
+- **Trims before you export**, against a waveform of the combined mix, with playback
+  of exactly the stretch you selected.
 
 ## Status
 
@@ -103,6 +105,17 @@ Exactly three files talk to hardware:
 - `CoreAudioDeviceEnumerator` — reads the device list from the HAL
 - `AudioDeviceMonitor` — hotplug and channel-mode listeners
 - `AudioCapture` — the AVAudioEngine tap, deinterleaving to `[[Float]]`
+
+### Trimming
+
+The combined mix is drawn as a waveform you can drag the ends of, scrub, and play.
+Playback stops at the out point, so what you audition is exactly what export
+contains.
+
+Trimming is non-destructive — the per-speaker recordings are never modified — and
+the transcript is re-timed alongside the audio, so the two exported files still
+agree. A turn straddling a cut is clipped rather than dropped, because someone
+mid-sentence at the boundary still said something inside the clip.
 
 ### Exporting
 
