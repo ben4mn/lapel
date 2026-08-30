@@ -83,6 +83,11 @@ swift run lapel-probe --demo-session ~/Library/Containers/com.4mn.lapel/Data/Lib
   together before your Mac ever sees them. Lapel will tell you if it is — including
   the case the channel count cannot reveal, below.
 
+  On a DJI Mic Mini, **double-click the pairing button** to switch between Mono and
+  Stereo. There is no labelled mode switch and no on-screen indication, so this is
+  easy to miss. Verified on hardware: stereo separation *does* apply to the USB-C
+  output, not just the 3.5&nbsp;mm camera jack.
+
 ## Design
 
 The rule the codebase is built around: **hardware types stop at the bridge.**

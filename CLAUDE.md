@@ -65,6 +65,11 @@ touch the tap, test with a device attached.
 - The DJI receiver has M / Ms / S modes. In **S (Stereo)** it puts TX1 on the
   left channel and TX2 on the right. In **M (Mono)** it mixes both lapels
   together, and no software can unmix that.
+- **Stereo separation works over USB-C.** Verified on hardware 2026-08-30 with a
+  DJI Mic Mini: in Stereo the two channels are genuinely independent over the USB
+  data port. The mode toggle is a **double-click of the pairing button** — there is
+  no labelled switch and no indicator, which is why the receiver ships feeling like
+  it cannot do this.
 - **Channel count does not tell you the mode.** A real DJI Mic Mini enumerates
   as `Wireless Mic Rx`, 2 input channels, 48 kHz, USB — *even in Mono mode*,
   where it sends the identical mix down both channels. Verified on hardware
