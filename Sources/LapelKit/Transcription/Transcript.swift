@@ -86,6 +86,28 @@ public struct Transcript: Codable, Equatable, Sendable {
         return Transcript(turns: turns)
     }
 
+    /// The turns falling inside a trim, re-timed so the transcript lines up with
+    /// the trimmed audio.
+    ///
+    /// A turn straddling a cut is kept and clipped rather than dropped: someone
+    /// mid-sentence at the boundary still said something inside the clip, and
+    /// losing that line would misrepresent the conversation.
+    public func trimmed(to trim: TrimSelection) -> Transcript {
+        guard trim.isTrimmed else { return self }
+
+        let kept = turns.compactMap { turn -> TranscriptTurn? in
+            let start = max(turn.start, trim.start)
+            let end = min(turn.end, trim.end)
+            guard start < end else { return nil }
+
+            var clipped = turn
+            clipped.start = start - trim.start
+            clipped.end = end - trim.start
+            return clipped
+        }
+        return Transcript(turns: kept)
+    }
+
     /// `Ben: morning`, one line per turn.
     public var plainText: String {
         turns.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")

@@ -53,6 +53,8 @@ public struct ExportOptions: Sendable {
     public var audioFormat: RecordingFormat = .aac
     public var transcriptFormat: TranscriptFormat = .plainText
     public var labeling: SpeakerLabeling = .names
+    /// Export only this stretch. Nil exports the whole recording.
+    public var trim: TrimSelection?
 
     public init() {}
 }
@@ -89,32 +91,29 @@ public struct SessionExporter: Sendable {
         var skipped: [String] = []
 
         if options.includeAudio {
-            var tracks: [[Float]] = []
-            var sampleRate = session.metadata.sampleRate
+            // The same loader the preview uses, so what the user trimmed against is
+            // produced by exactly the arithmetic that produces this file.
+            let mix = try SessionMixLoader(reader: reader).load(session)
+            skipped = mix.skippedTracks
 
-            for track in session.metadata.tracks {
-                let url = session.directory.appendingPathComponent(track.fileName)
-                do {
-                    let (samples, rate) = try reader.readMono(from: url)
-                    tracks.append(samples)
-                    if rate > 0 { sampleRate = rate }
-                } catch {
-                    // One damaged file must not cost the user the whole export.
-                    skipped.append(track.fileName)
-                }
+            // Mix first, then cut. Cutting each track first would cost the same
+            // arithmetic several times over for an identical result.
+            var samples = mix.samples
+            if let trim = options.trim, trim.isTrimmed {
+                samples = AudioMixdown.slice(samples, from: trim.start, to: trim.end, sampleRate: mix.sampleRate)
             }
 
-            guard !tracks.isEmpty else { throw ExportError.noReadableAudio }
-
             let url = Self.availableURL(in: directory, base: base, extension: options.audioFormat.fileExtension)
-            try write(AudioMixdown.mix(tracks), to: url, sampleRate: sampleRate, format: options.audioFormat)
+            try write(samples, to: url, sampleRate: mix.sampleRate, format: options.audioFormat)
             audioURL = url
         }
 
         var transcriptURL: URL?
         if options.includeTranscript, let transcript {
             let url = Self.availableURL(in: directory, base: base, extension: options.transcriptFormat.fileExtension)
-            let text = options.transcriptFormat.render(transcript, title: session.title, labeling: options.labeling)
+            // Re-timed alongside the audio, so the two exported files still agree.
+            let scoped = options.trim.map(transcript.trimmed(to:)) ?? transcript
+            let text = options.transcriptFormat.render(scoped, title: session.title, labeling: options.labeling)
             do {
                 try Data(text.utf8).write(to: url, options: .atomic)
             } catch {

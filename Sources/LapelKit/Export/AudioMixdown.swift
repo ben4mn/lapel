@@ -44,4 +44,23 @@ public enum AudioMixdown {
         vDSP_vsmul(sum, 1, &gain, &sum, 1, vDSP_Length(frames))
         return sum
     }
+
+    /// Takes the samples between two times, clamped to what actually exists.
+    ///
+    /// Out-of-range bounds are clamped rather than rejected: a trim handle dragged
+    /// to the very edge should export the edge, not fail.
+    public static func slice(
+        _ samples: [Float],
+        from start: TimeInterval,
+        to end: TimeInterval,
+        sampleRate: Double
+    ) -> [Float] {
+        guard !samples.isEmpty, sampleRate > 0 else { return [] }
+
+        let first = min(max(0, Int((start * sampleRate).rounded())), samples.count)
+        let last = min(max(0, Int((end * sampleRate).rounded())), samples.count)
+        guard first < last else { return [] }
+
+        return Array(samples[first..<last])
+    }
 }
