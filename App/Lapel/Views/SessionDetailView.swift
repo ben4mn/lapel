@@ -5,7 +5,10 @@ import SwiftUI
 /// A finished recording: its tracks, and eventually its transcript.
 struct SessionDetailView: View {
     let session: StoredSession
+
+    @Environment(RecorderModel.self) private var recorder
     @State private var player = TrackPlayer()
+    @State private var isExporting = false
 
     var body: some View {
         ScrollView {
@@ -22,7 +25,7 @@ struct SessionDetailView: View {
                     }
                 }
 
-                TranscriptSection(session: session)
+                TranscriptSection(transcript: recorder.transcript(for: session))
             }
             .padding(22)
         }
@@ -34,6 +37,13 @@ struct SessionDetailView: View {
             } label: {
                 Label("Show in Finder", systemImage: "folder")
             }
+            Button { isExporting = true } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            .help("Combine into one audio file and one transcript")
+        }
+        .sheet(isPresented: $isExporting) {
+            ExportSheet(session: session, transcript: recorder.transcript(for: session))
         }
     }
 
@@ -80,24 +90,72 @@ private struct TrackPlaybackRow: View {
     }
 }
 
-/// Transcription is deliberately explicit about being unavailable rather than
-/// hiding the feature, so the requirement is discoverable.
+/// Shows the combined script when there is one, and is explicit about being
+/// unavailable when there is not, so the requirement stays discoverable.
 private struct TranscriptSection: View {
-    let session: StoredSession
+    let transcript: Transcript?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Transcript").font(.title3.weight(.semibold))
-
-            HStack(spacing: 10) {
-                Image(systemName: "text.bubble").foregroundStyle(.secondary)
-                Text(UnavailableTranscriber().unavailableReason ?? "")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            HStack {
+                Text("Transcript").font(.title3.weight(.semibold))
                 Spacer()
+                if let transcript, !transcript.isEmpty {
+                    Text(speakingSummary(transcript))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(14)
-            .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 10))
+
+            if let transcript, !transcript.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(transcript.turns) { turn in
+                        TurnRow(turn: turn)
+                    }
+                }
+                .padding(16)
+                .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 10))
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "text.bubble").foregroundStyle(.secondary)
+                    Text(UnavailableTranscriber().unavailableReason ?? "")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(14)
+                .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 10))
+            }
+        }
+    }
+
+    /// How long each person spoke — the number a two-microphone recording can
+    /// answer and a single-track one cannot.
+    private func speakingSummary(_ transcript: Transcript) -> String {
+        transcript.speakingTime
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key) \(Transcript.timecode($0.value))" }
+            .joined(separator: "  ·  ")
+    }
+}
+
+private struct TurnRow: View {
+    let turn: TranscriptTurn
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(Transcript.timecode(turn.start))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                .frame(width: 44, alignment: .trailing)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(SpeakerLabeling.names.label(for: turn))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(turn.channelIndex == 0 ? Color.accentColor : Color.orange)
+                Text(turn.text).font(.callout).textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
         }
     }
 }

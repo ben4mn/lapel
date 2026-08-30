@@ -18,6 +18,9 @@ public final class RecorderModel {
     public private(set) var recordingState: RecordingState = .idle
     public private(set) var sessions: [StoredSession] = []
     public private(set) var errorMessage: String?
+    /// The session currently being transcribed, if any — one at a time, because the
+    /// speech engine is the bottleneck and queuing more would only slow the first.
+    public private(set) var transcribingSessionID: UUID?
 
     /// What the user is about to record, or is recording.
     public var title: String
@@ -30,6 +33,7 @@ public final class RecorderModel {
     private let store: SessionStore
     private let writerFactory: TrackWriterFactory
     private let captureFactory: AudioCaptureFactory
+    private let transcriber: any Transcribing
 
     // MARK: - Internals
 
@@ -41,11 +45,13 @@ public final class RecorderModel {
     public init(
         store: SessionStore,
         writerFactory: TrackWriterFactory = AudioFileTrackWriterFactory(),
-        captureFactory: AudioCaptureFactory = LiveAudioCaptureFactory()
+        captureFactory: AudioCaptureFactory = LiveAudioCaptureFactory(),
+        transcriber: (any Transcribing)? = nil
     ) {
         self.store = store
         self.writerFactory = writerFactory
         self.captureFactory = captureFactory
+        self.transcriber = transcriber ?? TranscriberFactory.makeDefault()
         self.title = Self.defaultTitle()
         self.sessions = (try? store.listSessions()) ?? []
     }
@@ -197,6 +203,38 @@ public final class RecorderModel {
     }
 
     public func dismissError() { errorMessage = nil }
+
+    /// The stored transcript for a session, if it has been transcribed.
+    public func transcript(for session: StoredSession) -> Transcript? {
+        store.readTranscript(for: session)
+    }
+
+    public var canTranscribe: Bool { transcriber.isAvailable }
+    public var transcriptionUnavailableReason: String? { transcriber.unavailableReason }
+
+    /// Transcribes every track and saves the merged script beside the audio.
+    public func transcribe(_ session: StoredSession) async {
+        guard transcribingSessionID == nil else { return }
+        transcribingSessionID = session.id
+        errorMessage = nil
+        defer { transcribingSessionID = nil }
+
+        do {
+            let transcript = try await SessionTranscription(engine: transcriber).transcribe(session)
+            try store.attachTranscript(transcript, to: session)
+            refreshSessions()
+        } catch let error as TranscriptionError {
+            errorMessage = Self.message(for: error)
+        } catch {
+            errorMessage = "Transcription failed: \(error.localizedDescription)"
+        }
+    }
+
+    private static func message(for error: TranscriptionError) -> String {
+        switch error {
+        case .unavailable(let reason), .failed(let reason): reason
+        }
+    }
 
     private func refreshSessions() {
         sessions = (try? store.listSessions()) ?? []

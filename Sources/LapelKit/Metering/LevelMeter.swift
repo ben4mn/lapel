@@ -76,7 +76,7 @@ public struct LevelMeter: Sendable {
 
     /// Amplitude to dBFS, floored and hardened against the NaN/inf a misbehaving
     /// driver can hand you mid-stream.
-    static func decibels(_ amplitude: Float) -> Float {
+    public static func decibels(_ amplitude: Float) -> Float {
         guard amplitude.isFinite, amplitude > 0 else { return floorDB }
         return max(20 * log10(amplitude), floorDB)
     }

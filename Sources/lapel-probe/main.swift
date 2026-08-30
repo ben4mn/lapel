@@ -167,6 +167,22 @@ private extension String {
     }
 }
 
+// `--demo-session <dir>` writes a fixture session instead of watching hardware,
+// so the app's library and export can be exercised with no receiver attached.
+if let flag = CommandLine.arguments.firstIndex(of: "--demo-session") {
+    let root = CommandLine.arguments.count > flag + 1
+        ? URL(fileURLWithPath: CommandLine.arguments[flag + 1])
+        : (try? SessionStore.defaultRoot()) ?? URL.homeDirectory.appending(path: "Lapel/Sessions")
+    do {
+        let directory = try DemoSession.write(to: root)
+        FileHandle.standardOutput.write(Data("Wrote demo session to \(directory.path)\n".utf8))
+    } catch {
+        FileHandle.standardError.write(Data("Could not write demo session: \(error)\n".utf8))
+        exit(1)
+    }
+    exit(0)
+}
+
 // Held in a binding rather than called on a temporary: the timer and the device
 // monitor capture the probe weakly, and a temporary would be gone before either fires.
 let probe = Probe()

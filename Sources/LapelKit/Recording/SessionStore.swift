@@ -144,6 +144,15 @@ public struct SessionStore: Sendable {
         metadata.transcriptFileName = Self.transcriptFileName
     }
 
+    /// Writes the transcript and updates the session's metadata on disk in one step,
+    /// so a saved transcript is never orphaned by metadata that does not mention it.
+    public func attachTranscript(_ transcript: Transcript, to session: StoredSession) throws {
+        let handle = SessionHandle(id: session.metadata.id, directory: session.directory)
+        var metadata = session.metadata
+        try write(transcript, to: handle, updating: &metadata)
+        try write(metadata, to: handle)
+    }
+
     /// Nil rather than throwing for both of the ordinary cases: a session that was
     /// never transcribed, and metadata naming a file that has since been removed.
     public func readTranscript(for session: StoredSession) -> Transcript? {
