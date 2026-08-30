@@ -122,8 +122,10 @@ final class Probe {
         let presences = state.presences
         let readings = self.readings
         let receiver = state.receiver
+        let separation = state.channelSeparation
 
         var lines: [String] = [summary]
+        lines.append("  channels: \(Self.verdict(separation))")
         if let advisory { lines.append("  ⚠︎ \(advisory.message)") }
 
         for (index, reading) in readings.enumerated() {
@@ -143,6 +145,15 @@ final class Probe {
             if index == peakAt { return reading.isClipping ? "!" : "|" }
             return index < filled ? "█" : "·"
         }.joined() + "]"
+    }
+
+    /// The whole question this tool exists to answer for a new receiver.
+    private static func verdict(_ separation: ChannelSeparation) -> String {
+        switch separation {
+        case .unknown: "unknown — talk into a transmitter"
+        case .identical: "IDENTICAL — one mix on both, speakers cannot be split"
+        case .independent: "INDEPENDENT — each transmitter on its own track ✓"
+        }
     }
 
     private static func badge(_ presence: MicPresence) -> String {

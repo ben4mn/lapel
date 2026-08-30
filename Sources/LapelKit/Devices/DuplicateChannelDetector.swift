@@ -11,6 +11,16 @@ import Foundation
 /// Silence is deliberately not evidence. Two channels carrying digital zero are
 /// identical, but that is what a correctly configured stereo receiver looks like
 /// with both lapels switched off, and accusing it of mono would be wrong.
+/// What the audio has actually shown about whether the two channels differ.
+public enum ChannelSeparation: Equatable, Sendable {
+    /// Not enough signal yet to say. Never treat this as good news.
+    case unknown
+    /// Both channels carry the same mix — speakers cannot be separated.
+    case identical
+    /// The channels genuinely differ, so each transmitter is on its own track.
+    case independent
+}
+
 public struct DuplicateChannelDetector: Sendable {
 
     /// Two copies of one mix can differ in the last bit or two. Anything below this
@@ -27,6 +37,14 @@ public struct DuplicateChannelDetector: Sendable {
     }
 
     public private(set) var isDuplicated = false
+    /// Set once a block carrying signal has shown the channels differing. One such
+    /// block is proof; no amount of silence is.
+    private var hasSeenDivergence = false
+
+    public var separation: ChannelSeparation {
+        if isDuplicated { return .identical }
+        return hasSeenDivergence ? .independent : .unknown
+    }
 
     public mutating func update(channels: [[Float]], elapsed: TimeInterval) {
         guard channels.count >= 2 else { return }
@@ -41,6 +59,7 @@ public struct DuplicateChannelDetector: Sendable {
         vDSP_vsub(right, 1, left, 1, &difference, 1, vDSP_Length(left.count))
 
         if peak(difference) <= Self.epsilon {
+            hasSeenDivergence = false
             identicalFor += elapsed
             // Confirmed only after sustained agreement: two people can briefly make
             // near-identical noise, but not sample-for-sample and not for seconds.
@@ -50,12 +69,14 @@ public struct DuplicateChannelDetector: Sendable {
             // finding is dropped at once rather than aged out.
             identicalFor = 0
             isDuplicated = false
+            hasSeenDivergence = true
         }
     }
 
     public mutating func reset() {
         identicalFor = 0
         isDuplicated = false
+        hasSeenDivergence = false
     }
 
     private func peak(_ samples: [Float]) -> Float {

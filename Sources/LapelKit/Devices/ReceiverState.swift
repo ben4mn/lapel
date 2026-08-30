@@ -32,6 +32,9 @@ public struct ReceiverState: Sendable {
         return duplicateDetector.isDuplicated ? .channelsAreIdentical : nil
     }
 
+    /// What the audio has shown about the two channels actually differing.
+    public var channelSeparation: ChannelSeparation { duplicateDetector.separation }
+
     /// False when the channel count says mono *or* when the audio shows both
     /// channels carrying the same mix.
     public var canSeparateSpeakers: Bool {
