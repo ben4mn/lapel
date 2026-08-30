@@ -25,7 +25,7 @@ struct SessionDetailView: View {
                     }
                 }
 
-                TranscriptSection(transcript: recorder.transcript(for: session))
+                TranscriptSection(session: session, transcript: recorder.transcript(for: session))
             }
             .padding(22)
         }
@@ -93,7 +93,12 @@ private struct TrackPlaybackRow: View {
 /// Shows the combined script when there is one, and is explicit about being
 /// unavailable when there is not, so the requirement stays discoverable.
 private struct TranscriptSection: View {
+    let session: StoredSession
     let transcript: Transcript?
+
+    @Environment(RecorderModel.self) private var recorder
+
+    private var isRunning: Bool { recorder.transcribingSessionID == session.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -104,6 +109,21 @@ private struct TranscriptSection: View {
                     Text(speakingSummary(transcript))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                }
+                if recorder.canTranscribe {
+                    Button {
+                        Task { await recorder.transcribe(session) }
+                    } label: {
+                        if isRunning {
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.small)
+                                Text("Transcribing…")
+                            }
+                        } else {
+                            Label(transcript == nil ? "Transcribe" : "Redo", systemImage: "text.bubble")
+                        }
+                    }
+                    .disabled(recorder.transcribingSessionID != nil)
                 }
             }
 
@@ -117,8 +137,8 @@ private struct TranscriptSection: View {
                 .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 10))
             } else {
                 HStack(spacing: 10) {
-                    Image(systemName: "text.bubble").foregroundStyle(.secondary)
-                    Text(UnavailableTranscriber().unavailableReason ?? "")
+                    Image(systemName: isRunning ? "waveform" : "text.bubble").foregroundStyle(.secondary)
+                    Text(placeholder)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -127,6 +147,12 @@ private struct TranscriptSection: View {
                 .background(.quaternary.opacity(0.2), in: .rect(cornerRadius: 10))
             }
         }
+    }
+
+    private var placeholder: String {
+        if isRunning { return "Transcribing each speaker's track separately…" }
+        if let reason = recorder.transcriptionUnavailableReason { return reason }
+        return "Not transcribed yet. Each speaker's track is transcribed on this Mac, separately."
     }
 
     /// How long each person spoke — the number a two-microphone recording can
