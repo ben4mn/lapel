@@ -3,6 +3,8 @@
 **Multi-track voice memos for macOS.** Record two people wearing two lapel mics, get
 back two audio files and two transcripts — one per speaker.
 
+**[ben4mn.github.io/lapel](https://ben4mn.github.io/lapel/)**
+
 Voice Memos records one track. If you clip a DJI Mic Mini transmitter to each person
 and plug the receiver into your Mac, the hardware is already keeping them apart —
 TX1 on the left channel, TX2 on the right. Lapel is the app that stops throwing that
