@@ -6,7 +6,8 @@ import LapelKit
 /// Exists so the receiver, its channel mode and its live levels can be verified
 /// against real hardware without launching the app — and so a bug report can be a
 /// pasted table rather than a description of some bars moving.
-final class Probe: @unchecked Sendable {
+@MainActor
+final class Probe {
 
     /// All output goes through one path. Swift's `print` is buffered while
     /// `FileHandle.write` is not, so mixing them reorders the device table behind
@@ -15,7 +16,6 @@ final class Probe: @unchecked Sendable {
         FileHandle.standardOutput.write(Data(text.utf8))
     }
 
-    private let lock = NSLock()
     private var state = ReceiverState()
     private var meters: [LevelMeter] = []
     private var capture: AudioCapture?
@@ -29,12 +29,16 @@ final class Probe: @unchecked Sendable {
     func run() {
         printDeviceTable()
 
-        monitor.start { [weak self] devices in
-            self?.handle(devices: devices)
+        // The monitor calls back on its own queue; the probe is main-actor isolated.
+        // DispatchQueue.main is that actor's executor and is FIFO, so ordering holds.
+        monitor.start { devices in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { probe.handle(devices: devices) }
+            }
         }
 
-        Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { [weak self] _ in
-            self?.draw()
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { _ in
+            MainActor.assumeIsolated { probe.draw() }
         }
 
         emit("\nWatching for changes. Plug or unplug the receiver, or press the mode button. Ctrl-C to quit.\n" + "\n")
@@ -59,11 +63,9 @@ final class Probe: @unchecked Sendable {
 
     // MARK: - Reacting to hardware
 
-    private func handle(devices: [AudioDeviceDescriptor]) {
-        lock.lock()
+    fileprivate func handle(devices: [AudioDeviceDescriptor]) {
         let event = state.devicesChanged(to: devices)
         let receiver = state.receiver
-        lock.unlock()
 
         switch event {
         case .connected, .reconfigured:
@@ -80,10 +82,8 @@ final class Probe: @unchecked Sendable {
         stopCapture()
 
         let channels = receiver.channelMode.trackCount
-        lock.lock()
         meters = (0..<channels).map { _ in LevelMeter() }
         readings = Array(repeating: .silent, count: channels)
-        lock.unlock()
 
         let capture = AudioCapture(device: receiver.device)
         do {
@@ -101,12 +101,11 @@ final class Probe: @unchecked Sendable {
         capture?.stop()
         capture = nil
         captureUID = nil
-        lock.lock(); meters = []; readings = []; lock.unlock()
+        meters = []
+        readings = []
     }
 
     private func consume(channels: [[Float]], sampleRate: Double) {
-        lock.lock()
-        defer { lock.unlock() }
         guard meters.count == channels.count else { return }
 
         readings = channels.indices.map { meters[$0].process(channels[$0], sampleRate: sampleRate) }
@@ -116,14 +115,12 @@ final class Probe: @unchecked Sendable {
 
     // MARK: - Drawing
 
-    private func draw() {
-        lock.lock()
+    fileprivate func draw() {
         let summary = state.statusSummary
         let advisory = state.advisory
         let presences = state.presences
         let readings = self.readings
         let receiver = state.receiver
-        lock.unlock()
 
         var lines: [String] = [summary]
         if let advisory { lines.append("  ⚠︎ \(advisory.message)") }
