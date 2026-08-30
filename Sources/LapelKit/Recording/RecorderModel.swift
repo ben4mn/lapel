@@ -61,6 +61,7 @@ public final class RecorderModel {
     public var receiver: Receiver? { receiverState.receiver }
     public var statusSummary: String { receiverState.statusSummary }
     public var advisory: ReceiverAdvisory? { receiverState.advisory }
+    public var canSeparateSpeakers: Bool { receiverState.canSeparateSpeakers }
     public var presences: [MicPresence] { receiverState.presences }
     public var connectedMicCount: Int { receiverState.connectedMicCount }
     public var isRecording: Bool { recordingState == .recording || recordingState == .paused }
@@ -128,11 +129,10 @@ public final class RecorderModel {
         // safely — dropping it beats writing one speaker into another's file.
         guard channels.count == meters.count, sampleRate > 0 else { return }
 
+        let elapsed = Double(channels[0].count) / sampleRate
         readings = channels.indices.map { meters[$0].process(channels[$0], sampleRate: sampleRate) }
-        receiverState.levelsChanged(
-            readings: readings,
-            elapsed: Double(channels[0].count) / sampleRate
-        )
+        receiverState.levelsChanged(readings: readings, elapsed: elapsed)
+        receiverState.audioArrived(channels: channels, elapsed: elapsed)
         session?.append(channels: channels)
         recordingState = session?.state ?? .idle
     }

@@ -36,13 +36,20 @@ public enum ChannelMode: Equatable, Sendable {
 
 /// A problem the user can actually fix, phrased as an instruction rather than an error.
 public enum ReceiverAdvisory: Equatable, Sendable {
+    /// The receiver exposes a single input channel.
     case receiverInMonoMode
+    /// The receiver exposes two channels but is sending the same audio down both —
+    /// what a DJI receiver actually does in M (Mono) mode.
+    case channelsAreIdentical
 
     public var message: String {
         switch self {
         case .receiverInMonoMode:
             "The receiver is sending a single mixed channel, so the two lapels cannot be "
             + "separated. Press the receiver's mode button until it shows S (Stereo), then reconnect."
+        case .channelsAreIdentical:
+            "Both channels are carrying exactly the same audio, so the two lapels cannot be "
+            + "separated. Press the receiver's mode button until it shows S (Stereo)."
         }
     }
 }

@@ -111,6 +111,7 @@ final class Probe {
         readings = channels.indices.map { meters[$0].process(channels[$0], sampleRate: sampleRate) }
         let elapsed = Double(channels[0].count) / sampleRate
         state.levelsChanged(readings: readings, elapsed: elapsed)
+        state.audioArrived(channels: channels, elapsed: elapsed)
     }
 
     // MARK: - Drawing

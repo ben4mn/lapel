@@ -79,8 +79,9 @@ swift run lapel-probe --demo-session ~/Library/Containers/com.4mn.lapel/Data/Lib
 - macOS 14 or later. On-device transcription requires macOS 26 and a build made
   with Xcode 26 — on older toolchains the engine compiles out and the app says so.
 - A DJI Mic Mini, DJI Mic 2, or any multi-channel USB audio input
-- **The receiver must be in S (Stereo) mode.** In M (Mono) it mixes both lapels into
-  a single channel before your Mac ever sees them. Lapel will tell you if it is.
+- **The receiver must be in S (Stereo) mode.** In M (Mono) it mixes both lapels
+  together before your Mac ever sees them. Lapel will tell you if it is — including
+  the case the channel count cannot reveal, below.
 
 ## Design
 
@@ -116,6 +117,20 @@ text. Names you typed are used as written; an unnamed track becomes `Speaker 1`
 rather than `TX1`, because a hardware label has no business in a document meant to
 be read. A numbered mode overrides names entirely, for sharing a transcript without
 naming anyone.
+
+### Channel count is not the mode
+
+A real DJI Mic Mini enumerates as `Wireless Mic Rx`, two input channels, 48 kHz,
+USB — **even in Mono mode**, where it sends the identical mix down both channels. A
+receiver can therefore claim stereo and still be incapable of separating speakers.
+
+So Lapel compares the two channels sample for sample. If they match while carrying
+signal, it says so and names the fix. Silence is never treated as evidence: two
+channels of digital zero are identical, but that is exactly what a correctly
+configured stereo receiver looks like with both lapels switched off.
+
+The device's product name also contains no vendor string at all, which is why
+detection matches on the manufacturer field rather than the name.
 
 ### Two things worth knowing
 

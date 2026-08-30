@@ -51,12 +51,30 @@ Two macro constraints worth knowing:
 - Comparing directory `URL`s with `==` is string comparison, so a trailing
   slash makes it fail spuriously. Compare `.standardizedFileURL.path`.
 
+## Things only hardware catches
+
+The audio tap runs on AVFAudio's realtime queue. `AudioCapture.start` is
+main-actor isolated, so the tap closure must be marked `@Sendable` or it
+inherits that isolation and the compiler injects an executor assertion at its
+entry — which trips and kills the process with SIGTRAP the instant real audio
+arrives. It compiles cleanly either way and no test reaches that thread. If you
+touch the tap, test with a device attached.
+
 ## Hardware facts that constrain the design
 
 - The DJI receiver has M / Ms / S modes. In **S (Stereo)** it puts TX1 on the
-  left channel and TX2 on the right. In **M (Mono)** it mixes both lapels into
-  one channel, and no software can unmix that — the app raises an advisory
-  naming the fix on the hardware.
+  left channel and TX2 on the right. In **M (Mono)** it mixes both lapels
+  together, and no software can unmix that.
+- **Channel count does not tell you the mode.** A real DJI Mic Mini enumerates
+  as `Wireless Mic Rx`, 2 input channels, 48 kHz, USB — *even in Mono mode*,
+  where it sends the identical mix down both channels. Verified on hardware
+  2026-08-30. `DuplicateChannelDetector` compares the two channels sample for
+  sample and raises the advisory when they match; silence is never taken as
+  evidence, because a correctly configured stereo receiver with both lapels off
+  looks exactly the same.
+- **The product name contains no vendor string.** Detection matches on the
+  manufacturer field (`DJI Technology Co., Ltd.`), which is why a name-only
+  match would miss the real device entirely.
 - CoreAudio cannot report how many transmitters are linked. The receiver
   enumerates as a fixed 2-channel device either way. Live mic count is inferred
   from the signal: an unlinked channel carries true digital zero, a linked but

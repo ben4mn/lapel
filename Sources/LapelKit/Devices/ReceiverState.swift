@@ -19,11 +19,24 @@ public struct ReceiverState: Sendable {
 
     public private(set) var receiver: Receiver?
     private var presenceDetector: MicPresenceDetector?
+    private var duplicateDetector = DuplicateChannelDetector()
 
     public init() {}
 
     public var isConnected: Bool { receiver != nil }
-    public var advisory: ReceiverAdvisory? { receiver?.advisory }
+
+    /// The hardware's own advisory first, then what the audio reveals. A receiver
+    /// can claim two channels and still be mixing them.
+    public var advisory: ReceiverAdvisory? {
+        if let hardware = receiver?.advisory { return hardware }
+        return duplicateDetector.isDuplicated ? .channelsAreIdentical : nil
+    }
+
+    /// False when the channel count says mono *or* when the audio shows both
+    /// channels carrying the same mix.
+    public var canSeparateSpeakers: Bool {
+        (receiver?.canSeparateSpeakers ?? false) && !duplicateDetector.isDuplicated
+    }
     public var presences: [MicPresence] { presenceDetector?.presences ?? [] }
     public var connectedMicCount: Int { presenceDetector?.connectedMicCount ?? 0 }
     public var speakingChannels: [Int] { presenceDetector?.speakingChannels ?? [] }
@@ -60,6 +73,7 @@ public struct ReceiverState: Sendable {
         case (.some, nil):
             receiver = nil
             presenceDetector = nil
+            duplicateDetector.reset()
             return .disconnected
 
         case (.some(let old), .some(let new)):
@@ -76,10 +90,19 @@ public struct ReceiverState: Sendable {
         presenceDetector?.update(readings: readings, elapsed: elapsed)
     }
 
+    /// Folds in the raw audio, which answers a question the levels cannot: whether
+    /// the two channels are actually carrying different microphones.
+    public mutating func audioArrived(channels: [[Float]], elapsed: TimeInterval) {
+        guard isConnected else { return }
+        duplicateDetector.update(channels: channels, elapsed: elapsed)
+    }
+
     /// Adopting always builds a fresh detector: presence inferred from the previous
     /// hardware must not survive into the new one.
     private mutating func adopt(_ new: Receiver) {
         receiver = new
         presenceDetector = MicPresenceDetector(channelCount: new.channelMode.trackCount)
+        // A duplication finding belongs to the hardware that produced it.
+        duplicateDetector.reset()
     }
 }
