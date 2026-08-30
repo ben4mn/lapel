@@ -29,6 +29,8 @@ perfect, deterministic, and free. Lapel just refuses to discard it.
 - **Transcribes each track on-device**, so the transcript is already attributed.
 - **Warns you when the receiver is in Mono mode**, where the two lapels are mixed
   together and separation is impossible — with the fix, on the hardware, in words.
+- **Exports a shareable pair**: all speakers mixed into one audio file, and one
+  combined transcript with every line attributed — as plain text, Markdown or SRT.
 
 ## Status
 
@@ -40,8 +42,9 @@ Under construction. Working today:
 | ✅ | Level metering, live transmitter count, speaking indicator |
 | ✅ | Recording state machine, per-channel file writing, session store |
 | ✅ | `lapel-probe` terminal harness |
-| 🚧 | SwiftUI app |
-| 🚧 | On-device transcription |
+| ✅ | SwiftUI app — live meters, transport, session library |
+| ✅ | Combined audio + transcript export (txt, Markdown, SRT) |
+| ✅ | On-device transcription with `SpeechAnalyzer` (requires macOS 26) |
 
 ## Try the hardware layer now
 
@@ -65,9 +68,16 @@ DJI MIC MINI — 2 of 2 microphones live
 
 Plug and unplug the receiver, or press its mode button, while it runs.
 
+No receiver to hand? Write a demo session and open the app:
+
+```bash
+swift run lapel-probe --demo-session ~/Library/Containers/com.4mn.lapel/Data/Library/Application\ Support/Lapel/Sessions
+```
+
 ## Requirements
 
-- macOS 14 or later (on-device transcription requires macOS 26)
+- macOS 14 or later. On-device transcription requires macOS 26 and a build made
+  with Xcode 26 — on older toolchains the engine compiles out and the app says so.
 - A DJI Mic Mini, DJI Mic 2, or any multi-channel USB audio input
 - **The receiver must be in S (Stereo) mode.** In M (Mono) it mixes both lapels into
   a single channel before your Mac ever sees them. Lapel will tell you if it is.
@@ -87,6 +97,25 @@ Exactly three files talk to hardware:
 - `CoreAudioDeviceEnumerator` — reads the device list from the HAL
 - `AudioDeviceMonitor` — hotplug and channel-mode listeners
 - `AudioCapture` — the AVAudioEngine tap, deinterleaving to `[[Float]]`
+
+### Exporting
+
+The per-speaker files are the point, but they are awkward to send to someone. So
+export produces the shareable pair *alongside* them: every track mixed to one audio
+file, and one transcript with each line attributed.
+
+The mixdown is a sum, not an average. Averaging is the textbook answer and it is
+wrong here — two people taking turns is the normal case, so only one track is loud
+at any instant, and dividing by the track count would halve the volume of a
+recording that never came close to clipping. Instead the sum is taken at full
+weight, and a single gain is applied across the whole mix only if its peak would
+exceed −1 dBFS.
+
+Mixing the audio discards the separation, so the transcript has to carry it in the
+text. Names you typed are used as written; an unnamed track becomes `Speaker 1`
+rather than `TX1`, because a hardware label has no business in a document meant to
+be read. A numbered mode overrides names entirely, for sharing a transcript without
+naming anyone.
 
 ### Two things worth knowing
 
