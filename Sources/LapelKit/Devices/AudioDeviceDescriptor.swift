@@ -40,3 +40,22 @@ public struct AudioDeviceDescriptor: Equatable, Sendable, Identifiable {
 
     public var canCapture: Bool { inputChannelCount > 0 }
 }
+
+import CoreAudio
+
+extension TransportType {
+    /// Maps `kAudioDevicePropertyTransportType`. Unrecognised codes degrade to
+    /// `.unknown` rather than failing: CoreAudio can report transports this app
+    /// has never heard of, and none of them should stop device enumeration.
+    public init(coreAudioValue: UInt32) {
+        switch coreAudioValue {
+        case kAudioDeviceTransportTypeBuiltIn: self = .builtIn
+        case kAudioDeviceTransportTypeUSB: self = .usb
+        case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: self = .bluetooth
+        case kAudioDeviceTransportTypeThunderbolt: self = .thunderbolt
+        case kAudioDeviceTransportTypeAggregate: self = .aggregate
+        case kAudioDeviceTransportTypeVirtual: self = .virtual
+        default: self = .unknown
+        }
+    }
+}
