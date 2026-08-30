@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lapel — multi-track voice memos for macOS</title>
+<meta name="description" content="Record two people wearing two lapel mics on a DJI Mic Mini. Get back one audio file and one transcript per speaker.">
+<meta property="og:title" content="Lapel">
+<meta property="og:description" content="Multi-track voice memos for macOS. One audio file and one transcript per speaker.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
+<style>
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --border: #e3e2df;
+  --text: #1c1b1a;
+  --muted: #6b6966;
+  --faint: #9a9895;
+  --accent: #b8442e;
+  --green: #2e7d4f;
+  --code-bg: #f4f3f1;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131211;
+    --surface: #1a1918;
+    --border: #2e2c2a;
+    --text: #eceae7;
+    --muted: #a3a09c;
+    --faint: #6f6c68;
+    --accent: #e8765c;
+    --green: #63c48c;
+    --code-bg: #1f1e1c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131211; --surface: #1a1918; --border: #2e2c2a; --text: #eceae7;
+  --muted: #a3a09c; --faint: #6f6c68; --accent: #e8765c; --green: #63c48c; --code-bg: #1f1e1c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+header { padding: 88px 0 56px; }
+.eyebrow {
+  font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 22px;
+}
+h1 { font-size: clamp(40px, 7vw, 60px); line-height: 1.04; letter-spacing: -.03em; margin: 0 0 20px; font-weight: 620; }
+.lede { font-size: 20px; line-height: 1.5; color: var(--muted); margin: 0 0 32px; max-width: 34em; }
+.lede strong { color: var(--text); font-weight: 600; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 8px; font-size: 15px; font-weight: 550;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  transition: border-color .15s ease;
+}
+.btn:hover { text-decoration: none; border-color: var(--faint); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn-primary:hover { opacity: .88; }
+
+section { padding: 40px 0; border-top: 1px solid var(--border); }
+h2 { font-size: 13px; font-weight: 620; letter-spacing: .12em; text-transform: uppercase;
+     color: var(--faint); margin: 0 0 24px; font-family: var(--mono); }
+h3 { font-size: 19px; letter-spacing: -.01em; margin: 0 0 8px; font-weight: 600; }
+p { margin: 0 0 16px; }
+p:last-child { margin-bottom: 0; }
+
+.term {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; overflow-x: auto; font: 13px/1.7 var(--mono);
+  color: var(--text); white-space: pre; -webkit-overflow-scrolling: touch;
+}
+.term .dim { color: var(--faint); }
+.term .hit { color: var(--accent); font-weight: 600; }
+.term .ok { color: var(--green); }
+code { font: 13.5px var(--mono); background: var(--code-bg); padding: 2px 5px; border-radius: 4px; }
+pre code { display: block; padding: 14px 16px; background: var(--code-bg); border: 1px solid var(--border);
+           border-radius: 8px; overflow-x: auto; line-height: 1.7; }
+
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+.card p { font-size: 14.5px; color: var(--muted); margin: 0; }
+
+.note { border-left: 2px solid var(--accent); padding-left: 18px; margin: 24px 0; }
+.note h3 { font-size: 17px; }
+.note p { color: var(--muted); font-size: 15px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+td { padding: 9px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td:first-child { width: 30px; }
+td:last-child { color: var(--muted); }
+
+footer { padding: 40px 0 72px; border-top: 1px solid var(--border); color: var(--faint); font-size: 14px; }
+.scroller { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Open source · macOS · MIT</div>
+  <h1>Lapel</h1>
+  <p class="lede">Multi-track voice memos for macOS. Record two people wearing two lapel mics and get back <strong>one audio file and one transcript per speaker</strong>.</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="https://github.com/ben4mn/lapel">View on GitHub</a>
+    <a class="btn" href="#try">Try the probe</a>
+  </div>
+</header>
+
+<section>
+  <h2>The problem</h2>
+  <p>Voice Memos records one track. A two-person conversation flattened into one mixed file is a transcript full of guesses about who said what.</p>
+  <p>But if you clip a DJI Mic Mini transmitter to each person, the hardware has <em>already</em> kept them apart — TX1 on the left channel, TX2 on the right. The separation is physical: perfect, deterministic, free. Speaker-diarization models exist to reconstruct what this hardware never lost.</p>
+  <p>Lapel is the app that stops throwing it away.</p>
+</section>
+
+<section>
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card"><h3>Sees the receiver arrive</h3><p>CoreAudio hotplug detection, no polling. It also catches the mode button being pressed, which changes the channel count without changing the device list.</p></div>
+    <div class="card"><h3>Counts live lapels</h3><p>Not how many the receiver <em>could</em> take — how many are switched on and transmitting right now.</p></div>
+    <div class="card"><h3>Meters each speaker</h3><p>Per-transmitter levels with proper ballistics, held peaks and clip detection.</p></div>
+    <div class="card"><h3>Records per speaker</h3><p>One file per person, named for whoever wore that mic. Channels that never carried a transmitter are discarded, not saved as silence.</p></div>
+    <div class="card"><h3>Transcribes on device</h3><p>Each track transcribed separately, so attribution is settled before any model runs. Nothing leaves your Mac.</p></div>
+    <div class="card"><h3>Warns you about Mono</h3><p>In M mode the receiver mixes both lapels before your Mac sees them. Lapel says so, and names the fix on the hardware.</p></div>
+  </div>
+</section>
+
+<section id="try">
+  <h2>Try the hardware layer now</h2>
+  <p>No app needed. The probe verifies everything below the UI against your own gear:</p>
+  <pre><code>git clone https://github.com/ben4mn/lapel
+cd lapel &amp;&amp; swift run lapel-probe</code></pre>
+  <div class="scroller">
+<div class="term">Input devices
+────────────────────────────────────────────────────────────
+<span class="hit">  ▸ DJI MIC MINI                  2 channels   48000 Hz  usb</span>
+<span class="dim">    MacBook Air Microphone        1 channel    48000 Hz  builtIn</span>
+────────────────────────────────────────────────────────────
+
+DJI MIC MINI — 2 of 2 microphones live
+  TX1    [███████████████|·················]  -18.4 dBFS  <span class="ok">● speaking</span>
+  TX2    [████|···························]  -46.1 dBFS  ○ live</div>
+  </div>
+  <p style="margin-top:16px">Plug and unplug the receiver, or press its mode button, while it runs.</p>
+</section>
+
+<section>
+  <h2>Two things worth knowing</h2>
+
+  <div class="note">
+    <h3>Counting live microphones is inference, not a query</h3>
+    <p>CoreAudio cannot tell you how many transmitters are linked — the receiver enumerates as a fixed two-channel USB device whether one lapel is on or both.</p>
+    <p>The signal can. A channel with no transmitter carries <em>true digital zero</em>. A linked transmitter sitting silent still sends its own self-noise, around −60&nbsp;dBFS and never exactly zero. That gap is the entire discriminator.</p>
+    <p>The timing is deliberately asymmetric: presence is believed on the first buffer so the UI lights up the instant a lapel is switched on, while absence must persist for a confirmation window, so an RF dropout can't make the count flicker.</p>
+  </div>
+
+  <div class="note">
+    <h3>Reading device names needs no microphone permission</h3>
+    <p>The CoreAudio HAL will name every attached device before you've granted anything, so Lapel shows <em>“DJI MIC MINI — 2 of 2 microphones live”</em> on first launch and only prompts when you actually press record.</p>
+    <p>A browser-based equivalent can't do this: <code>getUserMedia</code> hides device labels until permission is granted. It's one of several reasons this is Swift and not Electron.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Design</h2>
+  <p>The rule the codebase is built around: <strong>hardware types stop at the bridge.</strong></p>
+  <p>Metering, receiver detection, transmitter presence, the recording state machine and the session store contain no CoreAudio or AVFoundation types whatsoever. Audio reaches them as <code>[[Float]]</code> — one array per channel. Everything above the bridge is therefore tested against synthetic signals with exact arithmetic, and the whole suite runs on a CI machine with no audio interface attached.</p>
+  <p>Exactly three files talk to hardware: <code>CoreAudioDeviceEnumerator</code> reads the device list, <code>AudioDeviceMonitor</code> carries the hotplug and channel-mode listeners, and <code>AudioCapture</code> owns the AVAudioEngine tap that deinterleaves into <code>[[Float]]</code>.</p>
+  <p>Built red/green: every test written and confirmed failing before the code that satisfies it. Each commit message records what was red.</p>
+</section>
+
+<section>
+  <h2>Status</h2>
+  <table>
+    <tr><td>✅</td><td>Device enumeration, hotplug and channel-mode detection</td></tr>
+    <tr><td>✅</td><td>Level metering, live transmitter count, speaking indicator</td></tr>
+    <tr><td>✅</td><td>Recording state machine, per-channel files, session store</td></tr>
+    <tr><td>✅</td><td>SwiftUI app — live meters, transport, session library</td></tr>
+    <tr><td>✅</td><td><code>lapel-probe</code> terminal harness</td></tr>
+    <tr><td>🚧</td><td>On-device transcription (needs macOS 26)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Requirements</h2>
+  <p>macOS 14 or later. A DJI Mic Mini, DJI Mic 2, or any multi-channel USB audio input.</p>
+  <p><strong>The receiver must be in S (Stereo) mode.</strong> In M (Mono) it mixes both lapels into a single channel before your Mac ever sees them. Lapel will tell you if it is.</p>
+</section>
+
+<footer>
+  <div class="wrap" style="padding:0">
+    MIT licensed · <a href="https://github.com/ben4mn/lapel">github.com/ben4mn/lapel</a>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
