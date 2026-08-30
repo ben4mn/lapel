@@ -135,6 +135,7 @@ footer { padding: 40px 0 72px; border-top: 1px solid var(--border); color: var(-
     <div class="card"><h3>Records per speaker</h3><p>One file per person, named for whoever wore that mic. Channels that never carried a transmitter are discarded, not saved as silence.</p></div>
     <div class="card"><h3>Transcribes on device</h3><p>Each track transcribed separately, so attribution is settled before any model runs. Nothing leaves your Mac.</p></div>
     <div class="card"><h3>Warns you about Mono</h3><p>In M mode the receiver mixes both lapels before your Mac sees them. Lapel says so, and names the fix on the hardware.</p></div>
+    <div class="card"><h3>Exports a shareable pair</h3><p>Every speaker mixed to one audio file, and one attributed transcript — plain text, Markdown or SRT — alongside the per-speaker files, not instead of them.</p></div>
   </div>
 </section>
 
@@ -154,7 +155,26 @@ DJI MIC MINI — 2 of 2 microphones live
   TX1    [███████████████|·················]  -18.4 dBFS  <span class="ok">● speaking</span>
   TX2    [████|···························]  -46.1 dBFS  ○ live</div>
   </div>
-  <p style="margin-top:16px">Plug and unplug the receiver, or press its mode button, while it runs.</p>
+  <p style="margin-top:16px">Plug and unplug the receiver, or press its mode button, while it runs. No receiver to hand? <code>swift run lapel-probe --demo-session &lt;folder&gt;</code> writes a two-speaker fixture so you can see the app without buying a microphone.</p>
+</section>
+
+<section>
+  <h2>Exporting</h2>
+  <p>The per-speaker files are the point, but they are awkward to send to someone. Export produces the shareable pair <em>alongside</em> them: every track mixed into one audio file, and one transcript with each line attributed.</p>
+  <div class="scroller">
+<div class="term"><span class="hit">Ben</span>: Right — so the whole point is that the hardware already keeps you apart.
+<span class="ok">Dana</span>: Because we're each wearing our own transmitter.
+<span class="hit">Ben</span>: Exactly. TX1 goes to the left channel, TX2 goes to the right. Nothing has to guess.
+<span class="ok">Dana</span>: And that's why the transcript can say who said what without a diarization model.</div>
+  </div>
+  <div class="note" style="margin-top:26px">
+    <h3>The mixdown is a sum, not an average</h3>
+    <p>Averaging is the textbook answer and it is wrong here. Two people taking turns is the normal case, so only one track is loud at any instant — dividing by the track count would halve the volume of a recording that never came close to clipping. The sum is taken at full weight, and a single gain applied across the whole mix only if its peak would exceed −1&nbsp;dBFS.</p>
+  </div>
+  <div class="note">
+    <h3>Mixing discards the separation, so the transcript carries it</h3>
+    <p>Names you typed are used as written. An unnamed track becomes <code>Speaker 1</code> rather than <code>TX1</code> — a hardware label has no business in a document meant to be read. A numbered mode overrides names entirely, for sharing a transcript without naming anyone.</p>
+  </div>
 </section>
 
 <section>
@@ -189,14 +209,15 @@ DJI MIC MINI — 2 of 2 microphones live
     <tr><td>✅</td><td>Level metering, live transmitter count, speaking indicator</td></tr>
     <tr><td>✅</td><td>Recording state machine, per-channel files, session store</td></tr>
     <tr><td>✅</td><td>SwiftUI app — live meters, transport, session library</td></tr>
-    <tr><td>✅</td><td><code>lapel-probe</code> terminal harness</td></tr>
-    <tr><td>🚧</td><td>On-device transcription (needs macOS 26)</td></tr>
+    <tr><td>✅</td><td><code>lapel-probe</code> terminal harness, with a <code>--demo-session</code> fixture</td></tr>
+    <tr><td>✅</td><td>Combined audio and transcript export (txt, Markdown, SRT)</td></tr>
+    <tr><td>✅</td><td>On-device transcription with <code>SpeechAnalyzer</code></td></tr>
   </table>
 </section>
 
 <section>
   <h2>Requirements</h2>
-  <p>macOS 14 or later. A DJI Mic Mini, DJI Mic 2, or any multi-channel USB audio input.</p>
+  <p>macOS 14 or later. A DJI Mic Mini, DJI Mic 2, or any multi-channel USB audio input. On-device transcription needs macOS 26 and a build made with Xcode 26 — on older toolchains the engine compiles out and the app says so rather than failing quietly.</p>
   <p><strong>The receiver must be in S (Stereo) mode.</strong> In M (Mono) it mixes both lapels into a single channel before your Mac ever sees them. Lapel will tell you if it is.</p>
 </section>
 
