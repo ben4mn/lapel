@@ -183,6 +183,18 @@ if let flag = CommandLine.arguments.firstIndex(of: "--demo-session") {
     exit(0)
 }
 
+#if compiler(>=6.2)
+if let flag = CommandLine.arguments.firstIndex(of: "--transcribe-check"),
+   CommandLine.arguments.count > flag + 1,
+   #available(macOS 26.0, *) {
+    let directory = URL(fileURLWithPath: CommandLine.arguments[flag + 1])
+    let semaphore = DispatchSemaphore(value: 0)
+    Task { await TranscribeCheck.run(sessionDirectory: directory); semaphore.signal() }
+    semaphore.wait()
+    exit(0)
+}
+#endif
+
 // Held in a binding rather than called on a temporary: the timer and the device
 // monitor capture the probe weakly, and a temporary would be gone before either fires.
 let probe = Probe()

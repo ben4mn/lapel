@@ -64,7 +64,14 @@ public final class AudioCapture: AudioCapturing, @unchecked Sendable {
 
         // 4096 frames is ~85 ms at 48 kHz: long enough that the tap is cheap, short
         // enough that a meter still looks live.
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+        //
+        // The @Sendable is load-bearing, not decoration. This method is main-actor
+        // isolated (AudioCapturing is), so without it the closure *inherits* that
+        // isolation and the compiler injects an executor assertion at its entry.
+        // AVFAudio calls the tap on its own realtime queue, so that assertion trips
+        // and the process dies with SIGTRAP the moment audio first arrives — which
+        // no test catches, because it needs a real device attached to fire at all.
+        input.installTap(onBus: 0, bufferSize: 4096, format: format) { @Sendable buffer, _ in
             guard let channels = Self.deinterleave(buffer) else { return }
             let sampleRate = buffer.format.sampleRate
 
