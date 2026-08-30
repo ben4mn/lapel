@@ -17,7 +17,7 @@ public enum ReceiverDetector {
             .map(Receiver.init(device:))
     }
 
-    static func isVendorMatch(_ device: AudioDeviceDescriptor) -> Bool {
+    public static func isVendorMatch(_ device: AudioDeviceDescriptor) -> Bool {
         let haystack = "\(device.name) \(device.manufacturer)".lowercased()
         return vendorTokens.contains { haystack.contains($0) }
     }
